@@ -11,7 +11,7 @@
 #include <io.h>
 using namespace std;
 typedef long long ll;
-
+bool is_have_v = false; //判断是否要动词形态归一化
 /*****************************/
 //solve_v
 bool judge_alphabet(char c) {
@@ -30,6 +30,7 @@ struct solve_c_node {
 	char c;
 	double pinlv;
 };
+
 bool cmp_solve_c(solve_c_node x, solve_c_node y) {
 	if (x.pinlv == y.pinlv)
 		return x.c < y.c;
@@ -60,9 +61,6 @@ void solve_c(string file)
 
 	while (!book.eof()) {
 		getline(book, str);
-		if(is_have_v==true)
-			huan_yuan_v(str);
-
 		for (int i = 0; str[i] != '\0'; i++) {
 			if (str[i] >= 'a' && str[i] <= 'z') {
 				sum_alphabet++;
@@ -81,14 +79,11 @@ void solve_c(string file)
 		int temp = sum[i].pinlv * 100;
 		sum[i].pinlv = temp*1.0 / 100; //小数多位的时候排序时和需求不一样
 	}
-
 	sort(sum, sum + 52, cmp_solve_c);
-
-
 	cout << "Resule in TheFirstStep.txt" << endl;
 
 	freopen("TheZerotStep.txt", "w", stdout);
-	cout << "单词频率:" << endl;
+	cout << "字母频率:" << endl;
 
 	for (int i = 0; i < 52; i++) {
 		cout << sum[i].c << "	";
@@ -116,10 +111,8 @@ bool cmp_solve_f(solve_f_node x, solve_f_node y) {
 		return x.sum > y.sum;
 }
 
-void function_first_step(string file, bool _x = false)
+void first_step(string file, bool _x = false)
 {
-
-
 	temp_word.sum = 1;
 	ifstream book;
 	const char *strr=file.c_str();
@@ -127,10 +120,6 @@ void function_first_step(string file, bool _x = false)
 	string str;
 	while (!book.eof()) {
 		getline(book, str);
-
-		if (is_have_v == true)
-			huan_yuan_v(str);
-
 		int size = str.size();
 		string test_word;
 		for (int i = 0; i < size; i++) {
@@ -179,7 +168,8 @@ void printf_solve_f()
 	freopen("TheFirstStep.txt", "w", stdout);
 	cout << setw(max_size + 10) << setiosflags(ios::left) << "单词数量: " << endl;
 	for (int i = 0; i < sum_word; i++) {
-		cout << setw(max_size + 10 - word[i].word.size()) << setiosflags(ios::left) << word[i].word << word[i].sum << endl;
+		//printf("%s\t%d\n",word[i].word,word[i].sum);
+		cout << word[i].word << ": " << word[i].sum << endl;
 	}
 	fclose(stdout);
 
@@ -187,7 +177,7 @@ void printf_solve_f()
 
 void solve_f(string file)
 {
-	function_first_step(file);
+	first_step(file);
 	sort(word.begin(), word.end(), cmp_solve_f);
 	cout << "The Result in TheFirstStep.txt" << endl;
 	printf_solve_f();
@@ -195,39 +185,137 @@ void solve_f(string file)
 
 /*************f***************/
 
+
+string getFile(int &start, char *argv[],int size) { //从start开始获得一个文件名,start指向文件名最后一个单词
+	string file;
+	string kong_ge = " ";
+//	cout <<"file="<< file << endl;
+	string end = ".txt";
+	for (; start < size; start++) {
+		string te = argv[start];
+		file += te;
+		int t_size = te.size();
+		int sum_deng = 0;
+		if (t_size >= 4) {
+			for (int i = t_size - 4, j = 0; j < 4; i++, j++) {
+			//	cout << "te[i]=" << te[i] << " end[j]=" << end[j] << endl;
+				if (te[i] != end[j]) {
+					break;
+				}
+				else
+					sum_deng++;
+			}
+		}
+		if (sum_deng==4)
+			break;
+
+		file += kong_ge;
+	}
+	return file;
+}
+
+
 int main(int argc, char* argv[])
 {
-	bool _c = false; //功能0 字母频率    wf.exe -c <file name> 
-	string file_c;
-	bool _f = false;// 功能1 输出文件中所有不重复的单词    wf.exe -f <file>  
 
-	string file_v;
+	string file_book;
+	bool _c = false; //功能0 字母频率    wf.exe -c <file name> 
+	bool _f = false;// 功能1 输出文件中所有不重复的单词    wf.exe -f <file>  
+	bool _d = false;//功能2 对一个目录所有文件执行功能1 wf.exe -d <directory>
+	string file_directory;
+	bool _s = false;  //功能2扩展，遍历目录下所有子目录  wf.exe -d -s  <directory> 
+	bool _n = false;   //功能2扩展，输出出现次数最多的前 n 个单词  wf.exe -d -s  <directory> -n <number> (_n可能在前面)
+	int number_n=-1;
+	bool _x = false; //功能1扩展 支持停词表  wf.exe -x <stopwordfile>  -f <file> 
+	string file_stopword;
+	bool _p = false; //功能5  输出<number>个词的短语    wf.exe -p <number>  <file> 
+	int number_p;
+	bool _v = false; //以上功能扩展 支持动词形态的归一化  wf.exe -v <verb file> .... 
+	string file_verb;
+	
+	for (int start = 0; start < argc; start++) {
+		if (strcmp(argv[start], "-c") == 0) {
+			_c = true;
+			start++;
+			file_book = getFile(start, argv, argc);
+		}
+		else if (strcmp(argv[start], "-f") == 0) {
+			_f = true;
+			start++;
+			file_book = getFile(start, argv, argc);
+		}
+		else if (strcmp(argv[start], "-d") == 0) {
+			_d = true;
+			start++;
+			if (strcmp(argv[start], "-s") == 0) {
+				_s = true;
+				start++;
+				file_directory = argv[start];
+			}
+			else
+				file_directory = argv[start];
+		}
+		else if (strcmp(argv[start], "-n") == 0) {
+			_n = true;
+			number_n = 0;
+			start++;
+			string number = argv[start];
+			int size = number.size();
+			number_n = 0;
+			for (int j = 0; j < size; j++)
+				number_n = number_n * 10 + number[j] - '0';
+		}
+		else if (strcmp(argv[start], "-x") == 0) {
+			_x = true;
+			start++;
+			file_stopword = getFile(start, argv, argc);
+		}
+		else if (strcmp(argv[start], "-p") == 0) {
+			_p = true;
+			start++;
+	//		cout << "argv[start]=" << argv[start] << endl;
+			string number = argv[start];
+			int size = number.size();
+			number_p = 0;
+			for (int j = 0; j < size; j++)
+				number_p = number_p * 10 + number[j] - '0';
+			start++;
+			file_book = getFile(start, argv, argc);
+
+		}
+		else if (strcmp(argv[start], "-v") == 0) {
+			_v = true;
+			start++;
+			file_verb = getFile(start, argv, argc);
+		}
+	}
+
 
 	//类型判断完后
-	if (_v == true) { //含有-v参数 支持动词形态的归一化
-		is_have_v = true;
-		solve_v(file_v);
-	}
-	//判读功能5和功能6
-	int flag_v_p = 0;
-	for (int i = 0; i < argc; i++) {
-		if (strcmp(argv[i], "-p") == 0) {
-			flag_v_p = 5;
-		}
-		else if (strcmp(argv[i], "-v") == 0) {
-			flag_v_p = 6;
-		}
-	}
+//	if (_v == true) { //含有-v参数 支持动词形态的归一化
+//		is_have_v = true;
+//		solve_v(file_verb);
+//	}
 
-	if (strcmp(argv[1], "-c") == 0) {
-		string file = argv[2];
-		solve_c(file);
+	if (_c == true) { // 输出字母频率
+//		cout << "_c=true file=" << file_book << endl;
+		solve_c(file_book);
 	}
-	else if (strcmp(argv[1], "-f") == 0) {
-		string file = argv[2];
-		solve_f(file);
+	else if (_f == true && _x == false) { //输出文件中所有不重复的单词
+//		cout << "_f=true file=" << file_book << endl;
+		solve_f(file_book);
 	}
-
+//	else if (_d == true) {
+//	//	cout << "_d=true file_directory=" << file_directory<< endl;
+//		solve_d(file_directory, _s, number_n);
+//	}
+//	else if (_x == true) {
+////		cout << "_x=true file_stopword=" << file_stopword<<" file=" << file_book << endl;
+//		solve_x(file_stopword, file_book);
+//	}
+//	else if (_p == true) {
+//		solve_p(file_book, number_p);
+//	}
 
 	return 0;
 }
